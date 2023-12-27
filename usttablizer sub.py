@@ -84,17 +84,29 @@ def kana(a):
     hiragana_pattern = re.compile("[ぁ-ゞ]+")
     b = hiragana_pattern.findall(a)
     b = "".join(b)
-    if b == "":
+    if a == "R":
         b = "R"
+    elif len(a)!=0 and len(b)==0:
+        b = a
     elif a in kanahenkan:
         b = kanahenkan[a]
     return b
 
-def table(notes, tempo):
+def table(notes, glbtempo):
     l0 = [d.get('Length') for d in notes]
+    l0_2 = [d.get('Tempo') for d in notes]
+
+    l0_3 = []
+    k = str(glbtempo)
+    for i in range(len(l0_2)):
+        if l0_2[i] != None:
+            k = l0_2[i]
+        l0_3.append(k)
+    print(l0_3)
+
     l1 = [d.get('NoteNum') for d in notes]
     l2 = [d.get('Lyric') for d in notes]
-    l3 = ['{:.3f}'.format((int(d)/480)*(60/float(tempo))) for d in l0] #ノート長(四分音符=240)をsecに変換(小数点以下3桁)
+    l3 = ['{:.3f}'.format((int(l0[i])/480)*(60/float(l0_3[i]))) for i in range(len(l0))] #ノート長(四分音符=240)をsecに変換(小数点以下3桁)
     l4 = [notenumabc(d) for d in l1] #音階番号を音階へ
     l5 = [notenumhz(d) for d in l1] #音階番号を周波数へ
     l5_2 = ['{:.2f}'.format(d) for d in l5] 
@@ -330,7 +342,7 @@ class Application(tkinter.Tk):
         message_label.pack(pady=20)
 
     def credit(self):
-        self.show_message("VOICEVOX API - Hiroshiba様\nutaupy - oatsu-gh様")
+        self.show_message("VOICEVOX API - Hiroshiba様\nutaupy - oatsu-gh様\npy2exe for Python 3")
 
 
 app = Application()
