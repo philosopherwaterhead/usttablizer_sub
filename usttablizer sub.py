@@ -92,6 +92,28 @@ def kana(a):
         b = kanahenkan[a]
     return b
 
+def listblock(list,n):
+    list2 = []
+    k = 0
+    b = ''
+    for i in range(len(list)):
+        a = list[i]
+        if a != 'R':
+            k = k + 1
+            if k == n or i == len(list)-1:
+                k = 0
+                b = b + a
+                list2.append(b)
+                b = ''
+            else:
+                b = b + a
+        elif a == 'R':
+            k = 0
+            list2.append(b)
+            b = ''
+    list2 = [i for i in list2 if i != '']
+    return list2
+
 def table(notes, glbtempo):
     l0 = [d.get('Length') for d in notes]
     l0_2 = [d.get('Tempo') for d in notes]
@@ -102,7 +124,6 @@ def table(notes, glbtempo):
         if l0_2[i] != None:
             k = l0_2[i]
         l0_3.append(k)
-    print(l0_3)
 
     l1 = [d.get('NoteNum') for d in notes]
     l2 = [d.get('Lyric') for d in notes]
@@ -153,6 +174,11 @@ class Application(tkinter.Tk):
         self.file_menu.add_command(label="名前を付けて保存", command=self.save_file) 
         self.file_menu.add_separator()
         self.file_menu.add_command(label="終了", command=self.quit)
+
+        # Create a File menu
+        self.status_menu = tkinter.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(label="ステータス", menu=self.status_menu)
+        self.status_menu.add_command(label="最高音・最低音", command=self.statusviewer)
 
         self.soft_menu = tkinter.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="USTtableizerについて", menu=self.soft_menu)
@@ -254,9 +280,6 @@ class Application(tkinter.Tk):
 
             self.sid = int(content[-1])
 
-            #print("Project successfully loaded from:", file_path)
-        #print("Load file")
-
     def save_file(self):
         saver = ''
         if self.adjustlist == None:
@@ -296,7 +319,6 @@ class Application(tkinter.Tk):
         if file_path:
             with open(file_path, "w", encoding = "shift-JIS") as file:
                 file.write(project_data)
-            #print("Project saved to:", file_path)
 
     def ust_import(self):
         data = file_read()
@@ -312,8 +334,6 @@ class Application(tkinter.Tk):
         l2_2 = [kana(d) for d in et[2]]
 
         self.lylist = l2_2
-        self.pilist = et[6]
-        self.lelist = et[3]
 
         et0 = et[0][::-1]
         et1 = et[1][::-1]
@@ -325,7 +345,67 @@ class Application(tkinter.Tk):
 
         self.show_table(et3,et2_2,et6,et4,et5)
 
+        maxlength = 10 #最大文字長
+
+        s = listblock(l2_2,maxlength)
+
+        '''
+        このあたりでl2_2とsの対応インデックスを作っておく。
+        '''
+
+        # "R" でない最初のアイテムの番号（idx）を定める
+        idx = 0
+        if l2_2[-1] == 'R':
+            item = next((item for item in l2_2[::-1] if item != 'R'), 0)
+            idx = l2_2[::-1].index(item)
+
+
+        indexrow = 0
+        indexnum = 0
+        indexlist = []
+
+        for k in range(len(l2_2)):
+            if len(l2_2)-idx-1 <= k:
+                indexelement = None
+
+            mojisuu = len(l2_2[k])
+            if l2_2[k] == 'R':
+                indexelement = None
+            elif l2_2[k] == s[indexrow][indexnum:indexnum+mojisuu]: 
+                indexelement = [indexrow,indexnum]
+                if indexnum + mojisuu >= len(s[indexrow]):
+                    indexrow = indexrow + 1
+                    indexnum = 0
+                else:
+                    indexnum = indexnum + mojisuu
+            else:
+                indexelement = 'miss'
+
+            indexlist.append(indexelement)
+
+
+        self.pilist = et[6]
+        self.lelist = et[3]
+        self.queryblocklist = s
+        self.indexlist = indexlist
+
+        self.adjustlist = []
+        for i in range(len(l2_2)):
+            s = [self.indexlist[i],self.lelist[i],self.pilist[i],self.lylist[i],et[4][i],et[5][i]]
+            self.adjustlist.append(s)
+
+        for i in range(len(self.adjustlist)):
+            if i == 0 or self.adjustlist[i-1][0] == None or self.adjustlist[i][0] == None:
+                pass
+            elif int(self.adjustlist[i-1][0][0]) != int(self.adjustlist[i][0][0]):
+                self.adjustlist[i][0][1] = 0
+            elif int(self.adjustlist[i-1][0][1]) + 1 != int(self.adjustlist[i][0][1]):
+                self.adjustlist[i][0][1] = self.adjustlist[i-1][0][1] + 1 
+
+        self.querylist = None
+
         self.show_message('最高音: ' + str(notenumabc(max(et[1]))) + '    ' + '{:.2f}'.format(notenumhz(max(et[1]))) + 'Hz    ' + str(max(et6)) + '\n最低音: '+ str(notenumabc(min(et[1]))) + '    ' + '{:.2f}'.format(notenumhz(min(et[1]))) + 'Hz    ' + str(min(et6)))
+
 
     def show_table(self,r1,r2,r3,r4,r5):
         for i in range(0, len(r1)):
@@ -342,6 +422,21 @@ class Application(tkinter.Tk):
 
         message_label = tkinter.Label(message_window, text=message)
         message_label.pack(pady=20)
+
+    def statusviewer(self):
+        pl = []
+        for i in range(len(self.adjustlist)):
+            if self.adjustlist[i][2] != 'R' and  self.adjustlist[i][2] != None:
+                pl.append(float(self.adjustlist[i][2]))
+
+        maxpitch = max(pl)
+        maxindex = pl.index(maxpitch)
+
+        minpitch = min(pl)
+        minindex = pl.index(minpitch)
+
+        self.show_message('最高音: ' + str(self.adjustlist[maxindex][4]) + '    ' + str(self.adjustlist[maxindex][5]) + 'Hz    ' + str(maxpitch) + '\n最低音: '+ str(self.adjustlist[minindex][4]) + '    ' + str(self.adjustlist[minindex][5]) + 'Hz    ' + str(minpitch))
+
 
     def credit(self):
         self.show_message("VOICEVOX API - Hiroshiba様\nutaupy - oatsu-gh様\npy2exe for Python 3")
