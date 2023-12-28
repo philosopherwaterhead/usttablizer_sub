@@ -312,6 +312,8 @@ class Application(tkinter.Tk):
         l2_2 = [kana(d) for d in et[2]]
 
         self.lylist = l2_2
+        self.pilist = et[6]
+        self.lelist = et[3]
 
         et0 = et[0][::-1]
         et1 = et[1][::-1]
